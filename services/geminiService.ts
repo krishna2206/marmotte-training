@@ -1,8 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Question, Difficulty } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const SYSTEM_INSTRUCTION = `
 Tu es un expert en développement web et un créateur de quiz amusant. 
 Ton utilisateur s'appelle "Marmotte". Sois encourageant et un peu drôle dans ton ton général.
@@ -19,6 +17,9 @@ Exemple d'explication correcte : "Le hook useInsertionEffect est conçu pour inj
 `;
 
 export const generateQuizQuestions = async (topic: string, difficulty: Difficulty): Promise<Question[]> => {
+  // Initialisation à la demande pour éviter le crash au chargement si process.env est manquant
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   try {
     const prompt = `Génère 5 questions de quiz niveau ${difficulty} sur le sujet : ${topic} pour Marmotte.`;
 
