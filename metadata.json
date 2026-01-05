@@ -1,0 +1,5 @@
+{
+  "name": "DevMarmotte Quiz",
+  "description": "Une application de quiz ludique style Duolingo pour tester les compétences de dév de Marmotte, propulsée par Gemini.",
+  "requestFramePermissions": []
+}
