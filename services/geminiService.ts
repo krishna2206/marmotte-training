@@ -79,3 +79,80 @@ export const generateQuizQuestions = async (topic: string, difficulty: Difficult
     ];
   }
 };
+
+
+const COURSE_SYSTEM_INSTRUCTION = `
+Tu es un professeur expert en développement web qui crée des cours structurés et engageants pour "Marmotte".
+Génère un cours composé de 3 modules courts mais denses sur le sujet demandé.
+
+Structure de chaque module :
+1. Titre accrocheur.
+2. Contenu pédagogique (Markdown) :
+   - Explique le concept clairement.
+   - Utilise des analogies si possible.
+   - Inclus des exemples de code (format Markdown).
+   - Reste concis (environ 200 mots par module).
+3. UN MINI QUIZZ (une seule question) à la fin pour valider la compréhension du module.
+
+Format de réponse attendu : un tableau d'objets "Module".
+`;
+
+export const generateCourse = async (topic: string, difficulty: Difficulty): Promise<any[]> => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error("VITE_GEMINI_API_KEY is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  try {
+    const prompt = `Crée un cours de 3 modules niveau ${difficulty} sur : ${topic}.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        systemInstruction: COURSE_SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              content: {
+                type: Type.OBJECT,
+                properties: {
+                  text: { type: Type.STRING, description: "Contenu du cours en Markdown." },
+                  codeSnippet: { type: Type.STRING, description: "Snippet de code principal illustratif.", nullable: true }
+                },
+                required: ["text"]
+              },
+              quiz: {
+                type: Type.OBJECT,
+                description: "Question de validation pour ce module.",
+                properties: {
+                  text: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  correctAnswerIndex: { type: Type.INTEGER },
+                  explanation: { type: Type.STRING },
+                  topic: { type: Type.STRING }
+                },
+                required: ["text", "options", "correctAnswerIndex", "explanation", "topic"]
+              }
+            },
+            required: ["title", "content", "quiz"]
+          }
+        }
+      }
+    });
+
+    const rawData = JSON.parse(response.text || "[]");
+    return rawData.map((m: any, index: number) => ({
+      ...m,
+      id: `mod-${Date.now()}-${index}`
+    }));
+
+  } catch (error) {
+    console.error("Course generation error:", error);
+    return []; // Ou retourner un cours "fallback" si nécessaire
+  }
+};

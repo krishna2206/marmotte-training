@@ -7,9 +7,9 @@ interface MascotProps {
 
 const Mascot: React.FC<MascotProps> = ({ emotion = 'happy', className = 'w-32 h-32' }) => {
   // Simple emoji composition for the "Marmotte" character to keep it lightweight but expressive
-  
+
   const getEmoji = () => {
-    switch(emotion) {
+    switch (emotion) {
       case 'happy': return '🦦';
       case 'excited': return '🤩';
       case 'thinking': return '🤔';
