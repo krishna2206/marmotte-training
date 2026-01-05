@@ -9,7 +9,6 @@ import XPCounter from './components/XPCounter';
 // -- Icons --
 const Check = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
 const XMark = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
-const KeyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3L15.5 7.5z"></path></svg>;
 
 export default function App() {
   // -- State --
@@ -23,7 +22,6 @@ export default function App() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(true); // Par défaut on espère qu'elle y est
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -32,19 +30,6 @@ export default function App() {
   
   const [selectedTopic, setSelectedTopic] = useState("React");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(Difficulty.EASY);
-
-  // Vérification de la clé au montage
-  useEffect(() => {
-    const checkKey = async () => {
-      if (typeof window !== 'undefined' && (window as any).aistudio) {
-        const selected = await (window as any).aistudio.hasSelectedApiKey();
-        setHasApiKey(!!process.env.API_KEY || selected);
-      } else {
-        setHasApiKey(!!process.env.API_KEY);
-      }
-    };
-    checkKey();
-  }, []);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('devmarmotte_user');
@@ -57,48 +42,25 @@ export default function App() {
     localStorage.setItem('devmarmotte_user', JSON.stringify(user));
   }, [user]);
 
-  const handleOpenKeyDialog = async () => {
-    if (typeof window !== 'undefined' && (window as any).aistudio) {
-      await (window as any).aistudio.openSelectKey();
-      setHasApiKey(true); // On assume que c'est bon après l'ouverture
-    }
-  };
-
   const startQuiz = async () => {
-    if (!hasApiKey) {
-      await handleOpenKeyDialog();
-      return;
-    }
-
     setLoading(true);
-    try {
-      const questions = await generateQuizQuestions(selectedTopic, selectedDifficulty);
-      
-      const newQuiz: Quiz = {
-        id: Date.now().toString(),
-        topic: selectedTopic,
-        difficulty: selectedDifficulty,
-        questions: questions,
-        dateGenerated: Date.now(),
-        score: 0
-      };
+    const questions = await generateQuizQuestions(selectedTopic, selectedDifficulty);
+    
+    const newQuiz: Quiz = {
+      id: Date.now().toString(),
+      topic: selectedTopic,
+      difficulty: selectedDifficulty,
+      questions: questions,
+      dateGenerated: Date.now(),
+      score: 0
+    };
 
-      setCurrentQuiz(newQuiz);
-      setCurrentQuestionIndex(0);
-      setSelectedOption(null);
-      setIsAnswerChecked(false);
-      setView('QUIZ');
-    } catch (err: any) {
-      // Si l'erreur est liée à une entité non trouvée, on demande de resélectionner la clé
-      if (err.message?.includes("Requested entity was not found")) {
-        setHasApiKey(false);
-        alert("Erreur de clé API. Veuillez en sélectionner une valide.");
-      } else {
-        alert("Erreur lors de la génération du quiz. Vérifiez votre connexion.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    setCurrentQuiz(newQuiz);
+    setCurrentQuestionIndex(0);
+    setSelectedOption(null);
+    setIsAnswerChecked(false);
+    setLoading(false);
+    setView('QUIZ');
   };
 
   const checkAnswer = () => {
@@ -143,80 +105,57 @@ export default function App() {
         <XPCounter xp={user.xp} streak={user.streak} />
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-        <Mascot emotion={hasApiKey ? "happy" : "thinking"} />
+      <div className="flex-1 flex flex-col items-center justify-center space-y-8">
+        <Mascot emotion="happy" />
         <div className="text-center space-y-2">
           <h2 className="text-2xl font-bold text-duo-text">Salut, Marmotte ! 🦦</h2>
           <p className="text-duo-gray-dark font-medium">Prête à coder aujourd'hui ?</p>
         </div>
 
-        {!hasApiKey && (
-          <div className="w-full bg-blue-50 p-4 rounded-2xl border-2 border-duo-blue border-dashed text-center">
-            <p className="text-duo-blue font-bold text-sm mb-3">
-              L'IA a besoin d'une clé pour fonctionner.
-            </p>
-            <Button variant="outline" size="sm" onClick={handleOpenKeyDialog} className="mx-auto">
-              <KeyIcon /> <span className="ml-2">ACTIVER GEMINI</span>
-            </Button>
-            <p className="text-[10px] text-duo-gray-dark mt-2">
-              Note : Utilisez un projet GCP avec facturation activée. <br/>
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="underline">Infos facturation</a>
-            </p>
-          </div>
-        )}
+        <div className="w-full space-y-4">
+            <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-duo-gray-dark ml-2">Sujet</label>
+                <div className="grid grid-cols-2 gap-2">
+                    {["React", "JavaScript", "TypeScript", "CSS", "Git", "Python"].map(topic => (
+                        <button 
+                            key={topic}
+                            onClick={() => setSelectedTopic(topic)}
+                            className={`p-3 rounded-xl border-2 font-bold text-sm transition-all
+                                ${selectedTopic === topic 
+                                    ? 'border-duo-blue bg-blue-50 text-duo-blue' 
+                                    : 'border-duo-gray bg-white text-duo-gray-dark'
+                                }`}
+                        >
+                            {topic}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-        {hasApiKey && (
-          <div className="w-full space-y-4 animate-pop">
-              <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-duo-gray-dark ml-2">Sujet</label>
-                  <div className="grid grid-cols-2 gap-2">
-                      {["React", "JavaScript", "TypeScript", "CSS", "Git", "Python"].map(topic => (
-                          <button 
-                              key={topic}
-                              onClick={() => setSelectedTopic(topic)}
-                              className={`p-3 rounded-xl border-2 font-bold text-sm transition-all
-                                  ${selectedTopic === topic 
-                                      ? 'border-duo-blue bg-blue-50 text-duo-blue' 
-                                      : 'border-duo-gray bg-white text-duo-gray-dark'
-                                  }`}
-                          >
-                              {topic}
-                          </button>
-                      ))}
-                  </div>
-              </div>
-
-               <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-duo-gray-dark ml-2">Difficulté</label>
-                  <div className="flex space-x-2">
-                      {Object.values(Difficulty).map(diff => (
-                           <button 
-                              key={diff}
-                              onClick={() => setSelectedDifficulty(diff)}
-                              className={`flex-1 p-2 rounded-xl border-b-4 font-bold text-xs transition-all
-                                  ${selectedDifficulty === diff 
-                                      ? 'bg-duo-yellow text-white border-duo-yellow-dark' 
-                                      : 'bg-duo-gray text-duo-gray-dark border-duo-gray-dark opacity-50'
-                                  }`}
-                          >
-                              {diff}
-                          </button>
-                      ))}
-                  </div>
-              </div>
-          </div>
-        )}
+             <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-duo-gray-dark ml-2">Difficulté</label>
+                <div className="flex space-x-2">
+                    {Object.values(Difficulty).map(diff => (
+                         <button 
+                            key={diff}
+                            onClick={() => setSelectedDifficulty(diff)}
+                            className={`flex-1 p-2 rounded-xl border-b-4 font-bold text-xs transition-all
+                                ${selectedDifficulty === diff 
+                                    ? 'bg-duo-yellow text-white border-duo-yellow-dark' 
+                                    : 'bg-duo-gray text-duo-gray-dark border-duo-gray-dark opacity-50'
+                                }`}
+                        >
+                            {diff}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
       </div>
 
       <div className="py-6">
-        <Button 
-          fullWidth 
-          size="lg" 
-          onClick={startQuiz} 
-          disabled={loading}
-          variant={hasApiKey ? 'primary' : 'outline'}
-        >
-          {loading ? "Génération par IA..." : (hasApiKey ? "C'EST PARTI !" : "CONFIGURER L'IA")}
+        <Button fullWidth size="lg" onClick={startQuiz} disabled={loading}>
+          {loading ? "Génération par IA..." : "C'EST PARTI !"}
         </Button>
       </div>
     </div>
@@ -298,6 +237,7 @@ export default function App() {
                               La bonne réponse était : {question.options[question.correctAnswerIndex]}
                             </p>
                           )}
+                          {/* L'explication s'affiche désormais dans les deux cas (Vrai/Faux) */}
                           <p className={`text-xs mt-1 italic font-medium ${footerTextColor} opacity-80`}>
                               💡 {question.explanation}
                           </p>
