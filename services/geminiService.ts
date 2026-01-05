@@ -17,8 +17,14 @@ Exemple d'explication correcte : "Le hook useInsertionEffect est conçu pour inj
 `;
 
 export const generateQuizQuestions = async (topic: string, difficulty: Difficulty): Promise<Question[]> => {
-  // Initialisation à la demande pour éviter le crash au chargement si process.env est manquant
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Récupération de la clé API depuis les variables d'environnement Vite
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("VITE_GEMINI_API_KEY is missing. Please set it in your .env file.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const prompt = `Génère 5 questions de quiz niveau ${difficulty} sur le sujet : ${topic} pour Marmotte.`;
@@ -36,8 +42,8 @@ export const generateQuizQuestions = async (topic: string, difficulty: Difficult
             properties: {
               text: { type: Type.STRING, description: "La question posée." },
               codeSnippet: { type: Type.STRING, description: "Un bout de code optionnel pour la question (SANS LA RÉPONSE).", nullable: true },
-              options: { 
-                type: Type.ARRAY, 
+              options: {
+                type: Type.ARRAY,
                 items: { type: Type.STRING },
                 description: "Une liste de 4 réponses possibles."
               },
@@ -52,7 +58,7 @@ export const generateQuizQuestions = async (topic: string, difficulty: Difficult
     });
 
     const rawData = JSON.parse(response.text || "[]");
-    
+
     // Enrich with IDs
     return rawData.map((q: any, index: number) => ({
       ...q,
